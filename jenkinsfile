@@ -61,7 +61,7 @@ pipeline {
         stage("Distribución de artefacto") {
             stages {
                 stage("Construcción de imagen Docker - Build número: ${ BUILD_NUMBER }") {
-                    step(){
+                    steps(){
                         sh "docker build -t http://localhost:8082/devops-final:${ BUILD_NUMBER } ."
                     }
                 }
