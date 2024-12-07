@@ -1,0 +1,81 @@
+pipeline {
+    agent any
+    stages {
+        stage("Primera etapa") {
+            agent {
+                docker {
+                    label 'contenedores'
+                    image 'node:22-alpine'
+                    reuseNode true
+                }
+            }
+            stages {
+                stage("Instalacion de dependencias") {
+                    steps {
+                        sh "npm i"
+                    }
+                }
+                stage("Ejecución de pruebas") {
+                    steps {
+                        sh "npm run test"
+                    }
+                }
+                stage("Ejecución del build") {
+                    steps {
+                        sh "npm run build"
+                    }
+                }
+            }
+        }
+        stage("Aseguramiento de la calidad"){
+            agent {
+                docker {
+                    label 'contenedores'
+                    image 'sonarsource/sonar-scanner-cli'
+                    args '--network=devops-infra_default'
+                    reuseNode true
+                }
+            }
+            stages{
+                stage("Generación del informe para Sonarqube"){
+                    steps{
+                        withSonarQubeEnv('sonarqube') {
+                            sh 'sonar-scanner'
+                        }
+                    }
+                }
+                stage("Validación de puerta de calidad"){
+                    steps{
+                        script{
+                            timeout(time: 1, unit: 'MINUTES') {
+                                def qg = waitForQualityGate()
+                                if (qg.status != 'OK') {
+                                    error "Se aborta pipeline por error en puerta de calidad: ${qg.status}"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage("Distribución de artefacto") {
+            stages {
+                stage("Construcción de imagen Docker - Build número: ${ BUILD_NUMBER }") {
+                    step(){
+                        sh "docker build -t http://localhost:8082/devops-final:${ BUILD_NUMBER } ."
+                    }
+                }
+                stage("Push de la imagen y actualización de tags") {
+                    steps{
+                        script {
+                            docker.withRegistry("http://localhost:8082", "registry"){
+                                sh "docker tag http://localhost:8082/devops-final:${ BUILD_NUMBER } localhost:8082/devops-final:latest"
+                                sh "docker push localhost:8082/devops-final --all-tags"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
