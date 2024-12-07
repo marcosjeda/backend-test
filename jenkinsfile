@@ -1,7 +1,7 @@
 pipeline {
     agent any
     stages {
-        stage("Primera etapa") {
+        stage("Etapa 1 - Revisión del código") {
             agent {
                 docker {
                     label 'contenedores'
@@ -27,7 +27,7 @@ pipeline {
                 }
             }
         }
-        stage("Aseguramiento de la calidad"){
+        stage("Etapa 2 - Aseguramiento de la calidad"){
             agent {
                 docker {
                     label 'contenedores'
@@ -58,7 +58,7 @@ pipeline {
                 }
             }
         }
-        stage("Distribución de artefacto") {
+        stage("Etapa 3 - Distribución de artefacto") {
             stages {
                 stage("Construcción de imagen Docker") {
                     steps(){
